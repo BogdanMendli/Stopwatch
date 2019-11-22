@@ -12,8 +12,22 @@ import com.university.stopwatch.R;
 
 public class MainActivity extends AppCompatActivity {
 
+    enum StopwatchState {
+        RUNNING(1),
+        STOPPED(0),
+        RESET(-1);
+
+        private int state;
+
+        StopwatchState(int state) {
+            this.state = state;
+        }
+    }
+
     private Chronometer chronometer;
-    private boolean isRun;
+    private StopwatchState stopwatchState;
+    private long startTime;
+    private long stoppedTime;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -25,28 +39,50 @@ public class MainActivity extends AppCompatActivity {
         Button resetButton = findViewById(R.id.resetButton);
 
         startButton.setOnClickListener(view -> {
-            if (!isRun) {
-                chronometer.setBase(SystemClock.elapsedRealtime());
-                chronometer.start();
-                isRun = true;
+            switch (stopwatchState) {
+                case RESET: {
+                    startTime = SystemClock.elapsedRealtime();
+                    chronometer.setBase(startTime);
+                    chronometer.start();
+                    stopwatchState = StopwatchState.RUNNING;
+                    stoppedTime = 0;
+                    break;
+                }
+                case STOPPED: {
+                    startTime = SystemClock.elapsedRealtime() - stoppedTime + startTime;
+                    chronometer.setBase(startTime);
+                    stoppedTime = 0;
+                    chronometer.start();
+                    stopwatchState = StopwatchState.RUNNING;
+                    break;
+                }
             }
         });
 
         stopButton.setOnClickListener(view -> {
-            if (isRun) {
+            if (stopwatchState == StopwatchState.RUNNING) {
                 chronometer.stop();
-                isRun = false;
+                stopwatchState = StopwatchState.STOPPED;
+                stoppedTime = SystemClock.elapsedRealtime();
             }
         });
 
         resetButton.setOnClickListener(view -> {
-            if (isRun) {
-                chronometer.stop();
-                isRun = false;
+            switch (stopwatchState) {
+                case RUNNING: {
+                    chronometer.stop();
+                }
+                case STOPPED: {
+                    chronometer.setBase(SystemClock.elapsedRealtime());
+                    stopwatchState = StopwatchState.RESET;
+                    startTime = 0;
+                    stoppedTime = 0;
+                    break;
+                }
             }
-            chronometer.setBase(SystemClock.elapsedRealtime());
         });
 
+        stopwatchState = StopwatchState.RESET;
         chronometer = findViewById(R.id.chronometer);
         chronometer.setBase(SystemClock.elapsedRealtime());
     }
@@ -54,16 +90,42 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         outState.putLong("time", chronometer.getBase());
-        outState.putBoolean("isRun", isRun);
+        outState.putLong("startTime", startTime);
+        outState.putLong("stoppedTime", stoppedTime);
+        outState.putInt("isRun", stopwatchState.state);
         super.onSaveInstanceState(outState);
     }
 
     @Override
     protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
-        chronometer.setBase(savedInstanceState.getLong("time"));
-        isRun = savedInstanceState.getBoolean("isRun");
-        if (isRun) {
-            chronometer.start();
+        startTime = savedInstanceState.getLong("startTime");
+        stoppedTime = savedInstanceState.getLong("stoppedTime");
+        switch(savedInstanceState.getInt("isRun")) {
+            case 1: {
+                stopwatchState = StopwatchState.RUNNING;
+                break;
+            }
+            case 0: {
+                stopwatchState = StopwatchState.STOPPED;
+                break;
+            }
+            case -1: {
+                stopwatchState = StopwatchState.RESET;
+                break;
+            }
+            default: {
+                onDestroy();
+            }
+        }
+        switch (stopwatchState) {
+            case RUNNING: {
+                chronometer.setBase(savedInstanceState.getLong("time"));
+                chronometer.start();
+                break;
+            }
+            case STOPPED: {
+                chronometer.setBase(SystemClock.elapsedRealtime() - stoppedTime + startTime);
+            }
         }
         super.onRestoreInstanceState(savedInstanceState);
     }
