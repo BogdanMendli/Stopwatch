@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.PersistableBundle;
 import android.util.Log;
@@ -48,12 +49,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        runTime();
-    }
-
-    @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         outState.putBoolean("isRun", isRun);
         outState.putInt("seconds", secondsAfterStart);
@@ -65,11 +60,11 @@ public class MainActivity extends AppCompatActivity {
         handler.post(new Runnable() {
             @Override
             public void run() {
+                handler.postDelayed(this, 1000);
                 if (isRun) {
                     secondsAfterStart++;
                 }
                 timeView.setText(setTime());
-                handler.postDelayed(this, 1000);
             }
         });
     }
