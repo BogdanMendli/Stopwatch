@@ -4,74 +4,67 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
-import android.os.Handler;
+import android.os.SystemClock;
 import android.widget.Button;
-import android.widget.TextView;
+import android.widget.Chronometer;
 
 import com.university.stopwatch.R;
 
 public class MainActivity extends AppCompatActivity {
 
-    private TextView timeView;
+    private Chronometer chronometer;
     private boolean isRun;
-    private int secondsAfterStart;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        timeView = findViewById(R.id.timeView);
-
         Button startButton = findViewById(R.id.startButton);
         Button stopButton = findViewById(R.id.stopButton);
         Button resetButton = findViewById(R.id.resetButton);
 
-        startButton.setOnClickListener((view) -> isRun = true);
-
-        stopButton.setOnClickListener((view) -> isRun = false);
-
-        resetButton.setOnClickListener((view) -> {
-            isRun = false;
-            secondsAfterStart = 0;
-            timeView.setText(R.string.initialTime);
+        startButton.setOnClickListener(view -> {
+            if (!isRun) {
+                chronometer.setBase(SystemClock.elapsedRealtime());
+                chronometer.start();
+                isRun = true;
+            }
         });
 
-        if (savedInstanceState != null) {
-            isRun = savedInstanceState.getBoolean("isRun");
-            secondsAfterStart = savedInstanceState.getInt("seconds");
-            timeView.setText(String.valueOf(secondsAfterStart));
-        }
-        runTime();
+        stopButton.setOnClickListener(view -> {
+            if (isRun) {
+                chronometer.stop();
+                isRun = false;
+            }
+        });
+
+        resetButton.setOnClickListener(view -> {
+            if (isRun) {
+                chronometer.stop();
+                isRun = false;
+            }
+            chronometer.setBase(SystemClock.elapsedRealtime());
+        });
+
+        chronometer = findViewById(R.id.chronometer);
+        chronometer.setBase(SystemClock.elapsedRealtime());
     }
 
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
+        outState.putLong("time", chronometer.getBase());
         outState.putBoolean("isRun", isRun);
-        outState.putInt("seconds", secondsAfterStart);
         super.onSaveInstanceState(outState);
     }
 
-    private void runTime() {
-        Handler handler = new Handler();
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                handler.postDelayed(this, 1000);
-                if (isRun) {
-                    secondsAfterStart++;
-                }
-                timeView.setText(setTime());
-            }
-        });
-    }
-
-    private String setTime() {
-        return String.format(
-                "%d:%02d:%02d",
-                secondsAfterStart / 3600,
-                secondsAfterStart / 60,
-                secondsAfterStart % 60
-        );
+    @Override
+    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
+        chronometer.setBase(savedInstanceState.getLong("time"));
+        isRun = savedInstanceState.getBoolean("isRun");
+        if (isRun) {
+            chronometer.start();
+        }
+        super.onRestoreInstanceState(savedInstanceState);
     }
 }

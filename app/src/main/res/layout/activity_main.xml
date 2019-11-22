@@ -8,12 +8,12 @@
     android:keepScreenOn="true"
     tools:context=".activity.MainActivity">
 
-    <TextView
-        android:id="@+id/timeView"
+    <Chronometer
+        android:id="@+id/chronometer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:fontFamily="@font/cairo_extralight"
-        android:text="@string/initialTime"
+        android:text="@string/Stopwatch"
         android:textColor="@color/colorStopwatch"
         android:textSize="80sp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -36,7 +36,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/stopButton"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/timeView" />
+        app:layout_constraintTop_toBottomOf="@+id/chronometer" />
 
     <Button
         android:id="@+id/stopButton"
@@ -52,7 +52,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/timeView" />
+        app:layout_constraintTop_toBottomOf="@+id/chronometer" />
 
     <Button
         android:id="@+id/resetButton"
@@ -68,6 +68,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/stopButton"
-        app:layout_constraintTop_toBottomOf="@+id/timeView" />
+        app:layout_constraintTop_toBottomOf="@+id/chronometer" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
