@@ -1,14 +1,18 @@
 package com.university.stopwatch.activity;
 
-import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.widget.Button;
-import android.widget.Chronometer;
+import android.widget.TextView;
 
 import com.university.stopwatch.R;
+import com.university.stopwatch.service.BackgroundStopwatchService;
 
 public class StopwatchActivity extends AppCompatActivity {
 
@@ -24,109 +28,93 @@ public class StopwatchActivity extends AppCompatActivity {
         }
     }
 
-    private Chronometer chronometer;
+    private int currentTimeSeconds = 0;
+    private int timeBeforeStopped = 0;
+    private TextView timeView;
     private StopwatchState stopwatchState;
-    private long startTime;
-    private long stoppedTime;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stopwatch);
+
+        stopwatchState = StopwatchState.RESET;
 
         Button startButton = findViewById(R.id.startButton);
         Button stopButton = findViewById(R.id.stopButton);
         Button resetButton = findViewById(R.id.resetButton);
 
+        timeView = findViewById(R.id.timeView);
+
         startButton.setOnClickListener(view -> {
             switch (stopwatchState) {
-                case RESET: {
-                    startTime = SystemClock.elapsedRealtime();
-                    chronometer.setBase(startTime);
-                    chronometer.start();
-                    stopwatchState = StopwatchState.RUNNING;
-                    stoppedTime = 0;
-                    break;
-                }
+                case RESET:
                 case STOPPED: {
-                    startTime = SystemClock.elapsedRealtime() - stoppedTime + startTime;
-                    chronometer.setBase(startTime);
-                    stoppedTime = 0;
-                    chronometer.start();
                     stopwatchState = StopwatchState.RUNNING;
-                    break;
+                    startTimer();
                 }
             }
         });
 
         stopButton.setOnClickListener(view -> {
-            if (stopwatchState == StopwatchState.RUNNING) {
-                chronometer.stop();
+            if (stopwatchState == StopwatchState.RUNNING || stopwatchState == StopwatchState.RESET) {
+                stopTimer();
                 stopwatchState = StopwatchState.STOPPED;
-                stoppedTime = SystemClock.elapsedRealtime();
+                currentTimeSeconds += timeBeforeStopped;
+                timeBeforeStopped = 0;
             }
         });
 
         resetButton.setOnClickListener(view -> {
             switch (stopwatchState) {
+                case RESET:
                 case RUNNING: {
-                    chronometer.stop();
+                    stopTimer();
                 }
                 case STOPPED: {
-                    chronometer.setBase(SystemClock.elapsedRealtime());
+                    timeBeforeStopped = 0;
+                    currentTimeSeconds = 0;
+                    timeView.setText(R.string.initialTime);
                     stopwatchState = StopwatchState.RESET;
-                    startTime = 0;
-                    stoppedTime = 0;
                     break;
                 }
             }
         });
-
-        stopwatchState = StopwatchState.RESET;
-        chronometer = findViewById(R.id.chronometer);
-        chronometer.setBase(SystemClock.elapsedRealtime());
     }
 
     @Override
-    public void onSaveInstanceState(@NonNull Bundle outState) {
-        outState.putLong("time", chronometer.getBase());
-        outState.putLong("startTime", startTime);
-        outState.putLong("stoppedTime", stoppedTime);
-        outState.putInt("isRun", stopwatchState.state);
-        super.onSaveInstanceState(outState);
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(broadcastReceiver, new IntentFilter(BackgroundStopwatchService.ACTION));
     }
 
     @Override
-    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
-        startTime = savedInstanceState.getLong("startTime");
-        stoppedTime = savedInstanceState.getLong("stoppedTime");
-        switch(savedInstanceState.getInt("isRun")) {
-            case 1: {
-                stopwatchState = StopwatchState.RUNNING;
-                break;
-            }
-            case 0: {
-                stopwatchState = StopwatchState.STOPPED;
-                break;
-            }
-            case -1: {
-                stopwatchState = StopwatchState.RESET;
-                break;
-            }
-            default: {
-                onDestroy();
-            }
+    protected void onStop() {
+        super.onStop();
+        unregisterReceiver(broadcastReceiver);
+    }
+
+    private void setTimer(Intent intent) {
+        timeBeforeStopped = intent.getIntExtra("timeAfterStartService", 0);
+        int timeWorkingStopwatch = timeBeforeStopped + currentTimeSeconds;
+        int hours = timeWorkingStopwatch / 3600;
+        int minutes = (timeWorkingStopwatch / 60) & 60;
+        int seconds = timeWorkingStopwatch % 60;
+        timeView.setText(String.format("%d:%02d:%02d", hours, minutes, seconds));
+    }
+
+    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            setTimer(intent);
         }
-        switch (stopwatchState) {
-            case RUNNING: {
-                chronometer.setBase(savedInstanceState.getLong("time"));
-                chronometer.start();
-                break;
-            }
-            case STOPPED: {
-                chronometer.setBase(SystemClock.elapsedRealtime() - stoppedTime + startTime);
-            }
-        }
-        super.onRestoreInstanceState(savedInstanceState);
+    };
+
+    private void stopTimer() {
+        stopService(new Intent(getApplicationContext(), BackgroundStopwatchService.class));
+    }
+
+    private void startTimer() {
+        startService(new Intent(getApplicationContext(), BackgroundStopwatchService.class));
     }
 }
