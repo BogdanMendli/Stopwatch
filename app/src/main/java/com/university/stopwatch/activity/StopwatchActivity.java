@@ -7,8 +7,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.widget.Button;
+import android.preference.PreferenceManager;
+import android.view.View;
 import android.widget.TextView;
 
 import com.university.stopwatch.R;
@@ -16,70 +18,28 @@ import com.university.stopwatch.service.BackgroundStopwatchService;
 
 public class StopwatchActivity extends AppCompatActivity {
 
-    enum StopwatchState {
-        RUNNING(1),
-        STOPPED(0),
-        RESET(-1);
-
-        private int state;
-
-        StopwatchState(int state) {
-            this.state = state;
-        }
-    }
-
-    private int currentTimeSeconds = 0;
-    private int timeBeforeStopped = 0;
     private TextView timeView;
-    private StopwatchState stopwatchState;
+    private SharedPreferences preferences;
+    private SharedPreferences.Editor editor;
+    private int secondsBefore;
+    private int seconds;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_stopwatch);
 
-        stopwatchState = StopwatchState.RESET;
-
-        Button startButton = findViewById(R.id.startButton);
-        Button stopButton = findViewById(R.id.stopButton);
-        Button resetButton = findViewById(R.id.resetButton);
-
         timeView = findViewById(R.id.timeView);
 
-        startButton.setOnClickListener(view -> {
-            switch (stopwatchState) {
-                case RESET:
-                case STOPPED: {
-                    stopwatchState = StopwatchState.RUNNING;
-                    startTimer();
-                }
-            }
-        });
-
-        stopButton.setOnClickListener(view -> {
-            if (stopwatchState == StopwatchState.RUNNING || stopwatchState == StopwatchState.RESET) {
-                stopTimer();
-                stopwatchState = StopwatchState.STOPPED;
-                currentTimeSeconds += timeBeforeStopped;
-                timeBeforeStopped = 0;
-            }
-        });
-
-        resetButton.setOnClickListener(view -> {
-            switch (stopwatchState) {
-                case RESET:
-                case RUNNING: {
-                    stopTimer();
-                }
-                case STOPPED: {
-                    timeBeforeStopped = 0;
-                    currentTimeSeconds = 0;
-                    timeView.setText(R.string.initialTime);
-                    stopwatchState = StopwatchState.RESET;
-                    break;
-                }
-            }
-        });
+        preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        editor = preferences.edit();
+        secondsBefore = preferences.getInt("secondsBefore", 0);
+        seconds = preferences.getInt("seconds", 0);
+        if (preferences.getBoolean("isRun", false)) {
+            setTimer(preferences.getInt("secondsBefore", 0) + preferences.getInt("secondsAfterStartService", 0));
+        } else {
+            setTimer(preferences.getInt("secondsBefore", 0));
+        }
     }
 
     @Override
@@ -91,22 +51,23 @@ public class StopwatchActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        editor.putInt("secondsBefore", secondsBefore).apply();
         unregisterReceiver(broadcastReceiver);
     }
 
-    private void setTimer(Intent intent) {
-        timeBeforeStopped = intent.getIntExtra("timeAfterStartService", 0);
-        int timeWorkingStopwatch = timeBeforeStopped + currentTimeSeconds;
-        int hours = timeWorkingStopwatch / 3600;
-        int minutes = (timeWorkingStopwatch / 60) & 60;
-        int seconds = timeWorkingStopwatch % 60;
+    private void setTimer(int secondsAfterStart) {
+        editor.putInt("seconds", secondsAfterStart).apply();
+        int hours = secondsAfterStart / 3600;
+        int minutes = (secondsAfterStart / 60);
+        int seconds = secondsAfterStart % 60;
         timeView.setText(String.format("%d:%02d:%02d", hours, minutes, seconds));
     }
 
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            setTimer(intent);
+            seconds = secondsBefore + intent.getIntExtra("timeAfterStartService", 0);
+            setTimer(seconds);
         }
     };
 
@@ -116,5 +77,31 @@ public class StopwatchActivity extends AppCompatActivity {
 
     private void startTimer() {
         startService(new Intent(getApplicationContext(), BackgroundStopwatchService.class));
+    }
+
+    public void onStartButtonClick(View view) {
+        if (!preferences.getBoolean("isRun", false)) {
+            startTimer();
+        }
+        editor.putBoolean("isRun", true).apply();
+    }
+
+    public void onStopButtonClick(View view) {
+        if (preferences.getBoolean("isRun", false)) {
+            editor.putInt("secondsBefore", secondsBefore).apply();
+            secondsBefore = seconds;
+            stopTimer();
+        }
+        editor.putBoolean("isRun", false).apply();
+    }
+
+    public void onResetButtonClick(View view) {
+        seconds = 0;
+        secondsBefore = 0;
+        editor.putInt("secondsBefore", 0).apply();
+        editor.putInt("seconds", 0).apply();
+        editor.putBoolean("isRun", false).apply();
+        timeView.setText(R.string.initialTime);
+        stopTimer();
     }
 }

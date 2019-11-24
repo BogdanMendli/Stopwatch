@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/backgroundColor"
     android:keepScreenOn="true"
-    tools:context=".activity.MainActivity">
+    tools:context=".activity.StopwatchActivity">
 
     <TextView
         android:id="@+id/timeView"
@@ -24,6 +24,7 @@
 
     <Button
         android:id="@+id/startButton"
+        android:onClick="onStartButtonClick"
         android:layout_width="100dp"
         android:layout_height="60dp"
         android:background="@color/colorStart"
@@ -40,6 +41,7 @@
 
     <Button
         android:id="@+id/stopButton"
+        android:onClick="onStopButtonClick"
         android:layout_width="100dp"
         android:layout_height="60dp"
         android:background="@color/colorStop"
@@ -56,6 +58,7 @@
 
     <Button
         android:id="@+id/resetButton"
+        android:onClick="onResetButtonClick"
         android:layout_width="100dp"
         android:layout_height="60dp"
         android:background="@color/colorReset"
